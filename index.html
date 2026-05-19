@@ -96,13 +96,32 @@
             </div>
         </div>
 
-        <div id="input-zone" class="hidden glass p-4 rounded-3xl flex gap-3">
-            <input type="text" id="letter-input" maxlength="1" class="w-16 h-16 bg-white text-black text-center text-3xl font-black rounded-2xl outline-none focus:ring-4 focus:ring-yellow-400 uppercase" placeholder="?">
-            <button id="guess-btn" class="flex-1 bg-blue-600 rounded-2xl font-black text-lg uppercase shadow-[0_4px_0_rgb(30,58,138)] active:translate-y-1 active:shadow-none transition-all">Сказать букву</button>
+        <div id="input-zone" class="hidden glass p-4 rounded-3xl flex flex-col gap-4">
+            <!-- Tabs for Switchable Modes -->
+            <div class="flex bg-slate-900/60 p-1 rounded-xl border border-zinc-700">
+                <button id="tab-letter" class="flex-1 py-2 rounded-lg font-black text-xs uppercase bg-blue-600 text-white transition-all shadow-md">
+                    Назвать букву
+                </button>
+                <button id="tab-word" class="flex-1 py-2 rounded-lg font-black text-xs uppercase text-zinc-400 hover:text-white transition-all">
+                    Сказать слово сразу
+                </button>
+            </div>
+
+            <!-- Mode A: Guess Single Letter -->
+            <div id="mode-letter" class="flex gap-3">
+                <input type="text" id="letter-input" maxlength="1" class="w-16 h-16 bg-white text-black text-center text-3xl font-black rounded-2xl outline-none focus:ring-4 focus:ring-yellow-400 uppercase" placeholder="?">
+                <button id="guess-btn" class="flex-1 bg-blue-600 rounded-2xl font-black text-lg uppercase shadow-[0_4px_0_rgb(30,58,138)] active:translate-y-1 active:shadow-none transition-all">Ввести букву</button>
+            </div>
+
+            <!-- Mode B: Guess Entire Word -->
+            <div id="mode-word" class="hidden flex flex-col sm:flex-row gap-3">
+                <input type="text" id="word-input" class="flex-1 h-16 px-4 bg-white text-black text-center text-2xl font-black rounded-2xl outline-none focus:ring-4 focus:ring-yellow-400 uppercase tracking-widest" placeholder="СЛОВО">
+                <button id="guess-word-btn" class="sm:px-6 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-2xl font-black text-lg uppercase shadow-[0_4px_0_rgb(6,95,70)] active:translate-y-1 active:shadow-none transition-all">Сказать всё слово</button>
+            </div>
         </div>
     </div>
 
-    <div id="welcome" class="fixed inset-0 bg-slate-950/95 z-50 flex flex-center items-center justify-center p-6 text-center">
+    <div id="welcome" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-6 text-center">
         <div class="max-w-xs space-y-6">
             <div class="text-6xl mb-4">🎰</div>
             <h2 class="text-3xl font-black text-yellow-400 uppercase italic">Готовы к игре?</h2>
@@ -169,6 +188,27 @@
         const sectors = [100, 500, "ПРИЗ", 200, 1000, "БАНКРОТ", 300, 700, "ПЕРЕХОД", 400, 600, 150];
         const colors = ["#ef4444", "#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#18181b", "#ec4899", "#06b6d4", "#f97316", "#a855f7", "#84cc16", "#64748b"];
 
+        const tabLetter = document.getElementById('tab-letter');
+        const tabWord = document.getElementById('tab-word');
+        const modeLetter = document.getElementById('mode-letter');
+        const modeWord = document.getElementById('mode-word');
+
+        tabLetter.onclick = () => {
+            tabLetter.className = "flex-1 py-2 rounded-lg font-black text-xs uppercase bg-blue-600 text-white transition-all shadow-md";
+            tabWord.className = "flex-1 py-2 rounded-lg font-black text-xs uppercase text-zinc-400 hover:text-white transition-all";
+            modeLetter.classList.remove('hidden');
+            modeWord.classList.add('hidden');
+            document.getElementById('letter-input').focus();
+        };
+
+        tabWord.onclick = () => {
+            tabWord.className = "flex-1 py-2 rounded-lg font-black text-xs uppercase bg-blue-600 text-white transition-all shadow-md";
+            tabLetter.className = "flex-1 py-2 rounded-lg font-black text-xs uppercase text-zinc-400 hover:text-white transition-all";
+            modeWord.classList.remove('hidden');
+            modeLetter.classList.add('hidden');
+            document.getElementById('word-input').focus();
+        };
+
         function initWheel() {
             const svg = document.getElementById('wheel-svg');
             const step = 360 / sectors.length;
@@ -230,6 +270,7 @@
             document.getElementById('input-zone').classList.add('hidden');
             document.getElementById('spin-btn').disabled = false;
             document.getElementById('spin-btn').style.opacity = "1";
+            tabLetter.click(); // Reset inputs back to letters mode
         }
 
         function showAlert(title, text, cb) {
@@ -296,20 +337,23 @@
                 score = 0;
                 updateScore();
                 speak("Банкрот! Очки сгорели.");
-                showAlert("ОЙ!", "Вы банкрот. Все очки сгорели.", () => { wheelActive = true; document.getElementById('spin-btn').disabled = false; document.getElementById('spin-btn').style.opacity = "1"; });
+                showAlert("ОЙ!", "Вы банкрот. Все очки сгорели.", () => { resetTurn(); });
             } else if(currentSector === "ПЕРЕХОД") {
                 speak("Переход хода.");
-                showAlert("ПЕРЕХОД ХОДА", "Крутите барабан снова.", () => { wheelActive = true; document.getElementById('spin-btn').disabled = false; document.getElementById('spin-btn').style.opacity = "1"; });
+                showAlert("ПЕРЕХОД ХОДА", "Крутите барабан снова.", () => { resetTurn(); });
             } else {
-                const text = currentSector === "ПРИЗ" ? "Сектор Приз на барабане! Назовите букву." : `Сектор ${currentSector}. Назовите букву.`;
+                const text = currentSector === "ПРИЗ" ? "Сектор Приз на барабане! Назовите букву или слово." : `Сектор ${currentSector}. Назовите букву или слово целиком.`;
                 speak(text);
                 document.getElementById('input-zone').classList.remove('hidden');
-                document.getElementById('letter-input').focus();
+                tabLetter.click(); // Default to letter mode when starting a guess
             }
         }
 
         document.getElementById('guess-btn').onclick = checkLetter;
         document.getElementById('letter-input').onkeypress = (e) => { if(e.key === 'Enter') checkLetter(); };
+        
+        document.getElementById('guess-word-btn').onclick = checkWholeWord;
+        document.getElementById('word-input').onkeypress = (e) => { if(e.key === 'Enter') checkWholeWord(); };
 
         function checkLetter() {
             const input = document.getElementById('letter-input');
@@ -340,51 +384,20 @@
                 if(all) {
                     setTimeout(nextLevel, 1000);
                 } else {
-                    document.getElementById('input-zone').classList.add('hidden');
-                    wheelActive = true;
-                    document.getElementById('spin-btn').disabled = false;
-                    document.getElementById('spin-btn').style.opacity = "1";
+                    resetTurn();
                 }
             } else {
                 speak("Неправильно. Нет такой буквы.");
                 failSynth.triggerAttackRelease("G2", "4n");
                 showAlert("ОШИБКА", "Такой буквы нет в слове.", () => {
-                    document.getElementById('input-zone').classList.add('hidden');
-                    wheelActive = true;
-                    document.getElementById('spin-btn').disabled = false;
-                    document.getElementById('spin-btn').style.opacity = "1";
+                    resetTurn();
                 });
             }
         }
 
-        function updateScore() {
-            document.getElementById('score').textContent = score;
-        }
+        function checkWholeWord() {
+            const input = document.getElementById('word-input');
+            const val = input.value.toUpperCase().trim();
+            input.value = '';
 
-        function nextLevel() {
-            winSynth.triggerAttackRelease(["C4", "G4", "C5"], "2n");
-            showAlert("ПОБЕДА!", `Слово ${questions[currentQ].a} отгадано!`, () => {
-                currentQ++;
-                if(currentQ < questions.length) {
-                    loadQuestion();
-                } else {
-                    speak("Поздравляю! Вы прошли всю игру!");
-                    showAlert("ЧЕМПИОН!", "Вы ответили на все 20 вопросов!", () => location.reload());
-                }
-            });
-        }
-
-        document.getElementById('start-game').onclick = async () => {
-            await Tone.start();
-            document.getElementById('welcome').classList.add('hidden');
-            initWheel();
-            loadQuestion();
-        };
-
-        window.onload = () => {
-            // Pre-load voices
-            window.speechSynthesis.getVoices();
-        };
-    </script>
-</body>
-</html>
+            if(!val || !/^[А-
